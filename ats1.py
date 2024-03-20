@@ -4,31 +4,12 @@ import PyPDF2 as pdf
 import json
 import pandas as pd
 
-# Choose either Approach 1 or 2 for API key handling:
+# Define your Google API Key
+API_KEY = "AIzaSyD2oLQHkz9sYQvKZN6VaZ7ZI2t2N79wefQ"
 
-# Approach 1: Using Environment Variables (Recommended)
-#   - Create a .env file in your project's root directory with the line:
-#     API_KEY=YOUR_GOOGLE_API_KEY (replace with your actual API key)
-#   - Install python-dotenv: pip install python-dotenv
-
-import os
-from dotenv import load_dotenv
-
-def configure_gemini_api():
-    # Load environment variables from the .env file (if it exists)
-    load_dotenv()
-    API_KEY = os.getenv("API_KEY")
-    if API_KEY is None:
-        # If API key not found in environment, prompt user for input
-        st.error("API Key not found. Please enter your Google API Key:")
-        API_KEY = st.text_input("Enter your Google API Key", type="password")
-        if not API_KEY:
-            st.stop("API Key is required. Please enter it to proceed.")
-    genai.configure(api_key=API_KEY)
-
-# Approach 2: Hardcoding the API Key (Not Recommended)
-#   - Replace 'YOUR_GOOGLE_API_KEY' with your actual API key (**not** recommended)
-# API_KEY = "YOUR_GOOGLE_API_KEY"  # Not recommended!
+# Function to configure Gemini AI model with the provided API key
+def configure_gemini_api(api_key):
+    genai.configure(api_key=api_key)
 
 # Function to get response from Gemini AI
 def get_gemini_response(input):
@@ -60,7 +41,7 @@ if 'title' not in job_postings.columns:
     st.stop()
 
 # Filter job titles
-# search_query = st.multiselect("Search Job Titles", job_postings['title'].unique())
+#search_query = st.multiselect("Search Job Titles", job_postings['title'].unique())
 selected_job_titles = st.sidebar.multiselect("Selected Job Titles", job_postings['title'].unique())
 if not selected_job_titles:
     st.info("Please select at least one job title.")
@@ -89,9 +70,9 @@ if submit:
         I want the response in one single string having the structure
         {{"JD Match":"%","MissingKeywords":[],"Profile Summary":""}}
         """
-        configure_gemini_api()  # Call the configure function here
+        configure_gemini_api(API_KEY)
         response = get_gemini_response(input_prompt)
         st.subheader("Response:")
         parsed_response = json.loads(response)
         for key, value in parsed_response.items():
-            
+            st.write(f"**{key}:** {value}")
