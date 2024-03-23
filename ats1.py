@@ -4,7 +4,7 @@ import PyPDF2 as pdf
 import json
 
 # Define your Google API Key
-API_KEY = "your_api_key_here"
+API_KEY = "AIzaSyD2oLQHkz9sYQvKZN6VaZ7ZI2t2N79wefQ"
 
 # Function to configure Gemini AI model with the provided API key
 def configure_gemini_api(api_key):
