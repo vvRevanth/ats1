@@ -1,12 +1,10 @@
-
 import streamlit as st
 import google.generativeai as genai
 import PyPDF2 as pdf
 import json
-import pandas as pd
 
 # Define your Google API Key
-API_KEY = "AIzaSyD2oLQHkz9sYQvKZN6VaZ7ZI2t2N79wefQ"
+API_KEY = "your_api_key_here"
 
 # Function to configure Gemini AI model with the provided API key
 def configure_gemini_api(api_key):
@@ -27,30 +25,25 @@ def input_pdf_text(uploaded_file):
         text += str(page.extract_text())
     return text
 
-# Load job postings data
-@st.cache_data
-def load_job_postings():
-    job_postings = pd.read_csv('job_postings.csv')
-    return job_postings
-
 # Streamlit app
 st.title("Resume Matcher ATS")
 
-job_postings = load_job_postings()
-if 'title' not in job_postings.columns:
-    st.error("Job postings data does not contain the 'title' column.")
-    st.stop()
-
-# Filter job titles
-#wsearch_query = st.multiselect("Search Job Titles", job_postings['title'].unique())
+# Sidebar to select job titles
 selected_job_titles = st.sidebar.multiselect("Selected Job Titles", job_postings['title'].unique())
 if not selected_job_titles:
     st.info("Please select at least one job title.")
     st.stop()
 
+# Radio button to select job description source
 description_source = st.radio("Select Job Description Source:", ("From CSV File", "Enter Manually"))
 selected_job_title = None
 jd = None
+
+# Load job postings data
+job_postings = load_job_postings()
+if 'title' not in job_postings.columns:
+    st.error("Job postings data does not contain the 'title' column.")
+    st.stop()
 
 if description_source == "From CSV File":
     selected_job_title = selected_job_titles[0]
@@ -58,10 +51,7 @@ if description_source == "From CSV File":
 elif description_source == "Enter Manually":
     jd = st.text_area("Enter Job Description:")
 
-# Show job description for the first selected job title
-#selected_job_title = selected_job_titles[0]
-#jd = job_postings[job_postings['title'] == selected_job_title]['description'].values[0]
-
+# File uploader for resume
 uploaded_file = st.file_uploader("Upload Your Resume", type="pdf", help="Please upload the PDF")
 submit = st.button("Submit")
 
