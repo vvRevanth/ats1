@@ -1,82 +1,99 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+import base64
 import streamlit as st
+import os
+import io
+from PIL import Image 
+import pdf2image
 import google.generativeai as genai
-import PyPDF2 as pdf
-import json
 
-# Define your Google API Key
-API_KEY = "AIzaSyD2oLQHkz9sYQvKZN6VaZ7ZI2t2N79wefQ"
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-# Function to configure Gemini AI model with the provided API key
-def configure_gemini_api(api_key):
-    genai.configure(api_key=api_key)
-
-# Function to get response from Gemini AI
-def get_gemini_response(input):
-    model = genai.GenerativeModel('gemini-pro')
-    response = model.generate_content(input)
+def get_gemini_response(input,pdf_cotent,prompt):
+    model=genai.GenerativeModel('gemini-pro-vision')
+    response=model.generate_content([input,pdf_content[0],prompt])
     return response.text
 
-# Function to extract text from uploaded PDF file
-def input_pdf_text(uploaded_file):
-    reader = pdf.PdfReader(uploaded_file)
-    text = ""
-    for page in range(len(reader.pages)):
-        page = reader.pages[page]
-        text += str(page.extract_text())
-    return text
-
-# Streamlit app
-st.title("Resume Matcher ATS")
-
-# Sidebar to select job titles
-selected_job_titles = st.sidebar.multiselect("Selected Job Titles", job_postings['title'].unique())
-if not selected_job_titles:
-    st.info("Please select at least one job title.")
-    st.stop()
-
-# Radio button to select job description source
-description_source = st.radio("Select Job Description Source:", ("From CSV File", "Enter Manually"))
-selected_job_title = None
-jd = None
-
-# Load job postings data
-job_postings = load_job_postings()
-if 'title' not in job_postings.columns:
-    st.error("Job postings data does not contain the 'title' column.")
-    st.stop()
-
-if description_source == "From CSV File":
-    selected_job_title = selected_job_titles[0]
-    jd = job_postings[job_postings['title'] == selected_job_title]['description'].values[0]
-elif description_source == "Enter Manually":
-    jd = st.text_area("Enter Job Description:")
-
-# File uploader for resume
-uploaded_file = st.file_uploader("Upload Your Resume", type="pdf", help="Please upload the PDF")
-submit = st.button("Submit")
-
-if submit:
+def input_pdf_setup(uploaded_file):
     if uploaded_file is not None:
-        text = input_pdf_text(uploaded_file)
-        input_prompt = f"""
-        Hey Act Like a skilled or very experienced ATS (Application Tracking System)
-        with a deep understanding of the tech field, software engineering, data science, data analyst
-        and big data engineering. Your task is to evaluate the resume based on the given job description.
-        You must consider the job market is very competitive and you should provide the 
-        best assistance for improving the resumes. Assign the percentage Matching based 
-        on JD and the missing keywords with high accuracy.
-        resume:{text}
-        description:{jd}
-        
-        I want the response in one single string having the structure
-        {{"JD Match":"%","MissingKeywords":[],"Profile Summary":""}}
-        """
-        configure_gemini_api(API_KEY)
-        response = get_gemini_response(input_prompt)
-        st.subheader("Response:")
-        parsed_response = json.loads(response)
-        for key, value in parsed_response.items():
-            st.write(f"**{key}:** {value}")
+        ## Convert the PDF to image
+        images=pdf2image.convert_from_bytes(uploaded_file.read())
+
+        first_page=images[0]
+
+        # Convert to bytes
+        img_byte_arr = io.BytesIO()
+        first_page.save(img_byte_arr, format='JPEG')
+        img_byte_arr = img_byte_arr.getvalue()
+
+        pdf_parts = [
+            {
+                "mime_type": "image/jpeg",
+                "data": base64.b64encode(img_byte_arr).decode()  # encode to base64
+            }
+        ]
+        return pdf_parts
+    else:
+        raise FileNotFoundError("No file uploaded")
+
+## Streamlit App
+
+st.set_page_config(page_title="ATS Resume EXpert")
+st.header("ATS Tracking System")
+input_text=st.text_area("Job Description: ",key="input")
+uploaded_file=st.file_uploader("Upload your resume(PDF)...",type=["pdf"])
+
+
+if uploaded_file is not None:
+    st.write("PDF Uploaded Successfully")
+
+
+submit1 = st.button("Tell Me About the Resume")
+
+#submit2 = st.button("How Can I Improvise my Skills")
+
+submit3 = st.button("Percentage match")
+
+input_prompt1 = """
+ You are an experienced Technical Human Resource Manager,your task is to review the provided resume against the job description. 
+  Please share your professional evaluation on whether the candidate's profile aligns with the role. 
+ Highlight the strengths and weaknesses of the applicant in relation to the specified job requirements.
+"""
+
+input_prompt3 = """
+You are an skilled ATS (Applicant Tracking System) scanner with a deep understanding of data science and ATS functionality, 
+your task is to evaluate the resume against the provided job description. give me the percentage of match if the resume matches
+the job description. First the output should come as percentage and then keywords missing and last final thoughts.
+"""
+
+if submit1:
+    if uploaded_file is not None:
+        pdf_content=input_pdf_setup(uploaded_file)
+        response=get_gemini_response(input_prompt1,pdf_content,input_text)
+        st.subheader("The Repsonse is")
+        st.write(response)
+    else:
+        st.write("Please uplaod the resume")
+
+elif submit3:
+    if uploaded_file is not None:
+        pdf_content=input_pdf_setup(uploaded_file)
+        response=get_gemini_response(input_prompt3,pdf_content,input_text)
+        st.subheader("The Repsonse is")
+        st.write(response)
+    else:
+        st.write("Please uplaod the resume")
+
+
+
+   
+
+
+
+
+
 
 
 
